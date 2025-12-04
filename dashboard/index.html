@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UDENSROZE Property Search - Production Dashboard</title>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .data-source-info {
+            background: #e7f3ff;
+            border-left: 4px solid #007bff;
+            padding: 15px 30px;
+            margin: 20px 30px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .timestamp {
+            font-weight: bold;
+            color: #007bff;
+        }
+        
+        .search-section {
+            padding: 30px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+        }
+        
+        .search-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .form-group label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #495057;
+        }
+        
+        .form-group input,
+        .form-group select {
+            padding: 10px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 1em;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+        
+        .properties-container {
+            padding: 30px;
+        }
+        
+        .property-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            overflow: hidden;
+            transition: transform 0.2s;
+        }
+        
+        .property-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+        
+        .property-header {
+            padding: 20px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .property-title {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #212529;
+            margin-bottom: 10px;
+        }
+        
+        .property-meta {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .priority-badge {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 0.85em;
+        }
+        
+        .priority-CRITICAL {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .priority-HIGH {
+            background: #fd7e14;
+            color: white;
+        }
+        
+        .priority-MEDIUM {
+            background: #ffc107;
+            color: #212529;
+        }
+        
+        .priority-LOW {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .property-body {
+            padding: 20px;
+        }
+        
+        .property-scores {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .score-item {
+            text-align: center;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .score-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .score-label {
+            font-size: 0.85em;
+            color: #6c757d;
+        }
+        
+        .property-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .detail-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 60px;
+            font-size: 1.2em;
+            color: #667eea;
+        }
+        
+        .loading::after {
+            content: "...";
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+        
+        @keyframes dots {
+            0%, 20% { content: "."; }
+            40% { content: ".."; }
+            60%, 100% { content: "..."; }
+        }
+        
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            padding: 20px;
+        }
+        
+        .pagination button {
+            padding: 10px 20px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
+        .pagination button:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏛️ UDENSROZE Property Search</h1>
+            <p>Live Real Estate Intelligence | Puglia, Italy</p>
+        </div>
+        
+        <div class="data-source-info">
+            <div>
+                <div class="timestamp" id="data-timestamp">Loading...</div>
+                <div id="data-details">Connecting to database...</div>
+            </div>
+        </div>
+        
+        <div class="search-section">
+            <h2>🔍 Search & Filter Properties</h2>
+            <div class="search-grid">
+                <div class="form-group">
+                    <label>Location</label>
+                    <input type="text" id="filter-location" placeholder="e.g., Monopoli">
+                </div>
+                <div class="form-group">
+                    <label>Priority</label>
+                    <select id="filter-priority">
+                        <option value="">All Priorities</option>
+                        <option value="CRITICAL">CRITICAL</option>
+                        <option value="HIGH">HIGH</option>
+                        <option value="MEDIUM">MEDIUM</option>
+                        <option value="LOW">LOW</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Min Price (€)</label>
+                    <input type="number" id="filter-min-price" placeholder="800000">
+                </div>
+                <div class="form-group">
+                    <label>Max Price (€)</label>
+                    <input type="number" id="filter-max-price" placeholder="1500000">
+                </div>
+            </div>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="stat-total">0</div>
+                <div class="stat-label">Total Properties</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-critical">0</div>
+                <div class="stat-label">CRITICAL</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-high">0</div>
+                <div class="stat-label">HIGH Priority</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-avg-match">0%</div>
+                <div class="stat-label">Avg Match</div>
+            </div>
+        </div>
+        
+        <div class="properties-container">
+            <div id="loading" class="loading">Loading properties</div>
+            <div id="properties-list"></div>
+            <div id="pagination" class="pagination" style="display: none;"></div>
+        </div>
+    </div>
+    
+    <script src="config.js"></script>
+    <script>
+        // Initialize Firebase
+        firebase.initializeApp(FIREBASE_CONFIG);
+        const db = firebase.firestore();
+        
+        // Global state
+        let allProperties = [];
+        let filteredProperties = [];
+        let currentPage = 1;
+        const propertiesPerPage = 10;
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+            loadProperties();
+        });
+        
+        function setupEventListeners() {
+            document.getElementById('filter-location').addEventListener('input', debounce(applyFilters, 300));
+            document.getElementById('filter-priority').addEventListener('change', applyFilters);
+            document.getElementById('filter-min-price').addEventListener('input', debounce(applyFilters, 300));
+            document.getElementById('filter-max-price').addEventListener('input', debounce(applyFilters, 300));
+        }
+        
+        function debounce(func, wait) {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), wait);
+            };
+        }
+        
+        async function loadProperties() {
+            try {
+                document.getElementById('loading').style.display = 'block';
+                document.getElementById('properties-list').innerHTML = '';
+                
+                // Query Firestore
+                const snapshot = await db.collection('properties')
+                    .where('status', '==', 'active')
+                    .orderBy('match_percentage', 'desc')
+                    .limit(500)
+                    .get();
+                
+                allProperties = [];
+                snapshot.forEach(doc => {
+                    allProperties.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+                });
+                
+                console.log(`✅ Loaded ${allProperties.length} properties from Firestore`);
+                
+                // Update UI
+                updateDataSourceInfo();
+                applyFilters();
+                
+                document.getElementById('loading').style.display = 'none';
+                
+            } catch (error) {
+                console.error('Error loading properties:', error);
+                document.getElementById('loading').innerHTML = 
+                    `<div style="color: #dc3545;">Error loading properties: ${error.message}</div>`;
+            }
+        }
+        
+        function updateDataSourceInfo() {
+            if (allProperties.length === 0) {
+                document.getElementById('data-timestamp').textContent = 'No data available';
+                document.getElementById('data-details').textContent = 'Run scraper to collect properties';
+                return;
+            }
+            
+            // Get latest scrape time
+            const latestDate = new Date(allProperties[0].discovered_date);
+            const timeAgo = getTimeAgo(latestDate);
+            
+            document.getElementById('data-timestamp').textContent = `Last updated: ${timeAgo}`;
+            document.getElementById('data-details').textContent = 
+                `${allProperties.length} properties | Live from Firestore`;
+        }
+        
+        function getTimeAgo(date) {
+            const seconds = Math.floor((new Date() - date) / 1000);
+            const intervals = {
+                year: 31536000,
+                month: 2592000,
+                week: 604800,
+                day: 86400,
+                hour: 3600,
+                minute: 60
+            };
+            
+            for (const [unit, secondsInUnit] of Object.entries(intervals)) {
+                const interval = Math.floor(seconds / secondsInUnit);
+                if (interval >= 1) {
+                    return `${interval} ${unit}${interval > 1 ? 's' : ''} ago`;
+                }
+            }
+            return 'Just now';
+        }
+        
+        function applyFilters() {
+            const location = document.getElementById('filter-location').value.toLowerCase();
+            const priority = document.getElementById('filter-priority').value;
+            const minPrice = parseInt(document.getElementById('filter-min-price').value) || 0;
+            const maxPrice = parseInt(document.getElementById('filter-max-price').value) || Infinity;
+            
+            filteredProperties = allProperties.filter(prop => {
+                const matchLocation = !location || prop.location.toLowerCase().includes(location);
+                const matchPriority = !priority || prop.priority === priority;
+                const matchPrice = prop.price >= minPrice && prop.price <= maxPrice;
+                
+                return matchLocation && matchPriority && matchPrice;
+            });
+            
+            updateStatistics();
+            currentPage = 1;
+            displayProperties();
+        }
+        
+        function updateStatistics() {
+            const total = filteredProperties.length;
+            const critical = filteredProperties.filter(p => p.priority === 'CRITICAL').length;
+            const high = filteredProperties.filter(p => p.priority === 'HIGH').length;
+            const avgMatch = total > 0 
+                ? (filteredProperties.reduce((sum, p) => sum + p.match_percentage, 0) / total).toFixed(1)
+                : 0;
+            
+            document.getElementById('stat-total').textContent = total;
+            document.getElementById('stat-critical').textContent = critical;
+            document.getElementById('stat-high').textContent = high;
+            document.getElementById('stat-avg-match').textContent = avgMatch + '%';
+        }
+        
+        function displayProperties() {
+            const start = (currentPage - 1) * propertiesPerPage;
+            const end = start + propertiesPerPage;
+            const pageProperties = filteredProperties.slice(start, end);
+            
+            const container = document.getElementById('properties-list');
+            
+            if (pageProperties.length === 0) {
+                container.innerHTML = '<div class="loading">No properties match your filters</div>';
+                document.getElementById('pagination').style.display = 'none';
+                return;
+            }
+            
+            container.innerHTML = pageProperties.map(prop => generatePropertyCard(prop)).join('');
+            
+            // Show pagination
+            displayPagination();
+        }
+        
+        function generatePropertyCard(prop) {
+            return `
+                <div class="property-card">
+                    <div class="property-header">
+                        <div class="property-title">${prop.title}</div>
+                        <div class="property-meta">
+                            <span class="priority-badge priority-${prop.priority}">
+                                ${prop.match_percentage}% - ${prop.priority}
+                            </span>
+                            <span>📍 ${prop.location}</span>
+                            <span>💰 €${prop.price.toLocaleString()}</span>
+                        </div>
+                    </div>
+                    <div class="property-body">
+                        <div class="property-scores">
+                            <div class="score-item">
+                                <div class="score-value">${prop.geographic_score}</div>
+                                <div class="score-label">Geographic</div>
+                            </div>
+                            <div class="score-item">
+                                <div class="score-value">${prop.land_space_score}</div>
+                                <div class="score-label">Land & Space</div>
+                            </div>
+                            <div class="score-item">
+                                <div class="score-value">${prop.architectural_score}</div>
+                                <div class="score-label">Architectural</div>
+                            </div>
+                            <div class="score-item">
+                                <div class="score-value">${prop.financial_score}</div>
+                                <div class="score-label">Financial</div>
+                            </div>
+                        </div>
+                        
+                        <div class="property-details">
+                            <div class="detail-item">
+                                🏠 <strong>${prop.built_area}m²</strong> built
+                            </div>
+                            <div class="detail-item">
+                                🌳 <strong>${prop.land_area.toLocaleString()}m²</strong> land
+                            </div>
+                            <div class="detail-item">
+                                ${prop.sea_view ? '🌊' : '⚪'} Sea view
+                            </div>
+                            <div class="detail-item">
+                                ${prop.pool ? '🏊' : '⚪'} Pool
+                            </div>
+                            <div class="detail-item">
+                                ${prop.historic ? '🏛️' : '⚪'} Historic
+                            </div>
+                            <div class="detail-item">
+                                ${prop.masseria ? '✅' : '⚪'} Masseria
+                            </div>
+                        </div>
+                        
+                        <div style="margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                            <strong>💡 Recommendation:</strong> ${prop.recommendation}
+                        </div>
+                        
+                        <div style="margin: 10px 0;">
+                            <strong>✅ Strengths:</strong> ${prop.strengths.join(', ')}
+                        </div>
+                        
+                        ${prop.concerns.length > 0 ? `
+                            <div style="margin: 10px 0;">
+                                <strong>⚠️ Concerns:</strong> ${prop.concerns.join(', ')}
+                            </div>
+                        ` : ''}
+                        
+                        <div style="margin-top: 20px;">
+                            <a href="${prop.url}" target="_blank" class="btn btn-primary">
+                                View on ${prop.source} →
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function displayPagination() {
+            const totalPages = Math.ceil(filteredProperties.length / propertiesPerPage);
+            
+            if (totalPages <= 1) {
+                document.getElementById('pagination').style.display = 'none';
+                return;
+            }
+            
+            document.getElementById('pagination').style.display = 'flex';
+            document.getElementById('pagination').innerHTML = `
+                <button onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+                    ← Previous
+                </button>
+                <span style="padding: 10px;">Page ${currentPage} of ${totalPages}</span>
+                <button onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
+                    Next →
+                </button>
+            `;
+        }
+        
+        function changePage(page) {
+            currentPage = page;
+            displayProperties();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
